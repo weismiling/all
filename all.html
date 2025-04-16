@@ -6,85 +6,96 @@
   <script src="https://unpkg.com/jspsych@7.3.0"></script>
   <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response"></script>
   <link href="https://unpkg.com/jspsych@7.3.0/css/jspsych.css" rel="stylesheet" />
-</head>
-<body></body>
-
-<script>
-  // 参加者ID（ランダム文字列）
-  const participantID = jsPsych.randomization.randomID(8);
-
-  const jsPsych = initJsPsych({
-    on_finish: function() {
-      const raw_data = jsPsych.data.get().values();
-      fetch("【https://script.google.com/macros/s/AKfycbypLN-1YKbZPogELEjtYXDbexSuZXiCINGg94EmobqEhPsc5ETKnFnJXiWP4pR3h1q1/exec】", {
-        method: "POST",
-        body: JSON.stringify(raw_data),
-        headers: { "Content-Type": "application/json" }
-      })
-      .then(() => alert("データ送信完了！ありがとうございました。"))
-      .catch((error) => alert("送信エラー：" + error));
+  <style>
+    body {
+      font-family: "Arial", sans-serif;
+      text-align: center;
+      margin: 2em;
     }
-  });
+  </style>
+</head>
+<body>
+  <script>
+    const jsPsych = initJsPsych({
+      on_finish: function() {
+        // データ送信
+        const dataToSend = jsPsych.data.get().filter({trial_type: 'html-keyboard-response'}).map(trial => ({
+          participant_id: trial.participant_id,
+          word: trial.word,
+          color: trial.color,
+          congruent: trial.congruent,
+          rt: trial.rt,
+          key_press: trial.key_press
+        }));
 
-  const timeline = [];
-
-  // ウェルカムメッセージ
-  const welcome = {
-    type: jsPsychHtmlKeyboardResponse,
-    stimulus: 'ストループ課題へようこそ。<br><br>スペースキーで開始します。',
-    choices: [' ']
-  };
-  timeline.push(welcome);
-
-  // ストループ刺激の定義
-  const words = ['赤', '青', '緑'];
-  const colors = ['red', 'blue', 'green'];
-
-  let stroop_trials = [];
-
-  // 各組み合わせを繰り返す（例：2回ずつ）
-  for (let rep = 0; rep < 2; rep++) {
-    for (let word of words) {
-      for (let color of colors) {
-        stroop_trials.push({
-          type: jsPsychHtmlKeyboardResponse,
-          stimulus: `<p style="font-size: 48px; color:${color};">${word}</p>`,
-          choices: ['r', 'g', 'b'], // r=赤, g=緑, b=青
-          data: {
-            word: word,
-            color: color,
-            congruent: word === getJapaneseColorName(color) ? 'congruent' : 'incongruent',
-            participant_id: participantID
+        fetch("https://script.google.com/macros/s/【https://script.google.com/macros/s/AKfycbyZZIxnin1mVJGABCxyFrjzFwqvLBua6ecMF2EI8IsdjfTPH4sz_lxE8k1R23vWLOTY/exec】/exec", {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json'
           },
-          trial_duration: 2000
+          body: JSON.stringify(dataToSend)
+        })
+        .then(response => response.text())
+        .then(result => {
+          console.log("送信成功:", result);
+        })
+        .catch(error => {
+          console.error("送信エラー:", error);
         });
+
+        jsPsych.data.displayData(); // 確認用。公開時は削除してもOK
+      }
+    });
+
+    const participantID = jsPsych.randomization.randomID(8);
+    const timeline = [];
+
+    timeline.push({
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: 'ストループ課題へようこそ。<br><br>スペースキーで開始します。',
+      choices: [' ']
+    });
+
+    const words = ['赤', '青', '緑'];
+    const colors = ['red', 'blue', 'green'];
+
+    function getJapaneseColorName(color) {
+      switch(color) {
+        case 'red': return '赤';
+        case 'blue': return '青';
+        case 'green': return '緑';
+        default: return '';
       }
     }
-  }
 
-  // 試行をランダム化
-  const randomized_trials = jsPsych.randomization.shuffle(stroop_trials);
-  timeline.push(...randomized_trials);
+    let stroop_trials = [];
 
-  // 終了メッセージ
-  const end = {
-    type: jsPsychHtmlKeyboardResponse,
-    stimulus: '課題は終了しました。<br><br>ご協力ありがとうございました！',
-    choices: [' ']
-  };
-  timeline.push(end);
-
-  // 色名を日本語で変換
-  function getJapaneseColorName(color) {
-    switch(color) {
-      case 'red': return '赤';
-      case 'blue': return '青';
-      case 'green': return '緑';
-      default: return '';
+    for (let rep = 0; rep < 2; rep++) {
+      for (let word of words) {
+        for (let color of colors) {
+          stroop_trials.push({
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `<p style="font-size: 48px; color:${color};">${word}</p>`,
+            choices: ['r', 'g', 'b'],
+            data: {
+              word: word,
+              color: color,
+              congruent: word === getJapaneseColorName(color) ? 'congruent' : 'incongruent',
+              participant_id: participantID
+            },
+            trial_duration: 2000
+          });
+        }
+      }
     }
-  }
 
-  // 実行開始
-  jsPsych.run(timeline);
-</script>
-</html>
+    timeline.push(...jsPsych.randomization.shuffle(stroop_trials));
+
+    timeline.push({
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: '課題は終了しました。<br><br>ご協力ありがとうございました！<br><br>データを送信しています...',
+      choices: 'NO_KEYS',
+      trial_duration: 2000
+    });
+
+    jsPsych
