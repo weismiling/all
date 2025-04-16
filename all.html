@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ストループ課題</title>
+  <script src="https://unpkg.com/jspsych@7.3.0"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response"></script>
+  <link href="https://unpkg.com/jspsych@7.3.0/css/jspsych.css" rel="stylesheet" />
+</head>
+<body></body>
+
+<script>
+  // 参加者ID（ランダム文字列）
+  const participantID = jsPsych.randomization.randomID(8);
+
+  const jsPsych = initJsPsych({
+    on_finish: function() {
+      const raw_data = jsPsych.data.get().values();
+      fetch("【https://script.google.com/macros/s/AKfycbyZZIxnin1mVJGABCxyFrjzFwqvLBua6ecMF2EI8IsdjfTPH4sz_lxE8k1R23vWLOTY/exec】", {
+        method: "POST",
+        body: JSON.stringify(raw_data),
+        headers: { "Content-Type": "application/json" }
+      })
+      .then(() => alert("データ送信完了！ありがとうございました。"))
+      .catch((error) => alert("送信エラー：" + error));
+    }
+  });
+
+  const timeline = [];
+
+  // ウェルカムメッセージ
+  const welcome = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: 'ストループ課題へようこそ。<br><br>スペースキーで開始します。',
+    choices: [' ']
+  };
+  timeline.push(welcome);
+
+  // ストループ刺激の定義
+  const words = ['赤', '青', '緑'];
+  const colors = ['red', 'blue', 'green'];
+
+  let stroop_trials = [];
+
+  // 各組み合わせを繰り返す（例：2回ずつ）
+  for (let rep = 0; rep < 2; rep++) {
+    for (let word of words) {
+      for (let color of colors) {
+        stroop_trials.push({
+          type: jsPsychHtmlKeyboardResponse,
+          stimulus: `<p style="font-size: 48px; color:${color};">${word}</p>`,
+          choices: ['r', 'g', 'b'], // r=赤, g=緑, b=青
+          data: {
+            word: word,
+            color: color,
+            congruent: word === getJapaneseColorName(color) ? 'congruent' : 'incongruent',
+            participant_id: participantID
+          },
+          trial_duration: 2000
+        });
+      }
+    }
+  }
+
+  // 試行をランダム化
+  const randomized_trials = jsPsych.randomization.shuffle(stroop_trials);
+  timeline.push(...randomized_trials);
+
+  // 終了メッセージ
+  const end = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: '課題は終了しました。<br><br>ご協力ありがとうございました！',
+    choices: [' ']
+  };
+  timeline.push(end);
+
+  // 色名を日本語で変換
+  function getJapaneseColorName(color) {
+    switch(color) {
+      case 'red': return '赤';
+      case 'blue': return '青';
+      case 'green': return '緑';
+      default: return '';
+    }
+  }
+
+  // 実行開始
+  jsPsych.run(timeline);
+</script>
+</html>
